@@ -30,6 +30,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
 import javax.servlet.http.HttpServletRequest;
+import javax.transaction.Transactional;
 
 import org.hibernate.mapping.ForeignKey;
 import org.json.simple.JSONObject;
@@ -249,5 +250,69 @@ public class PaymentVNPayController {
         // Chuyển về trang kết quả thanh toán
 		return "user/ketquathanhtoan";
 	}
+	
+	
+	// New endpoint for direct payment
+    @PostMapping("/directPayment")
+    @Transactional
+    public String processDirectPayment(
+            @RequestParam("amount") String inputMoney, HttpServletRequest request,
+            @RequestParam("thanhtien") Double bookingprice, @RequestParam("phone") String phone,
+            @RequestParam("note") String note, @RequestParam("shiftid") int shiftid,
+            @RequestParam("fieldid") int fieldid, @RequestParam("playdate") String playdateSt,
+            @RequestParam("pricefield") Double priceField, Model model
+    ) throws Throwable {
+        Bookings newbooking = new Bookings();
+        Bookingdetails newbookingdetail = new Bookingdetails();
+
+        userlogin = (String) request.getSession().getAttribute("username");
+        Date currentDate = new Date();
+        String bookingstatus = "Đã Cọc";
+
+        String pattern = "yyyy-MM-dd"; // Mẫu định dạng của chuỗi ngày tháng
+        SimpleDateFormat sdfDate = new SimpleDateFormat(pattern);
+        Date playdate = sdfDate.parse(playdateSt);
+
+        newbooking.setUsername(userlogin);
+        newbooking.setBookingdate(currentDate);
+        newbooking.setBookingprice(bookingprice);
+        newbooking.setPhone(phone);
+        newbooking.setNote(note);
+        newbooking.setBookingstatus(bookingstatus);
+
+        // Save the Bookings entity first and get the generated bookingid
+        Bookings savedBooking = bookingservice.create(newbooking);
+        if (savedBooking == null || savedBooking.getBookingid() == null) {
+            throw new IllegalStateException("Failed to save Bookings entity or retrieve bookingid");
+        }
+
+        // Set the generated bookingid in Bookingdetails
+        newbookingdetail.setBookingid(savedBooking.getBookingid());
+        newbookingdetail.setShiftid(shiftid);
+        newbookingdetail.setPlaydate(playdate);
+        newbookingdetail.setFieldid(fieldid);
+        newbookingdetail.setPrice(priceField);
+
+        // Save booking and booking details within the same transaction
+        String transactionStatus;
+        double amountInVND = Double.parseDouble(inputMoney);
+        try {
+            bookingdetailservice.create(newbookingdetail);
+            transactionStatus = "Thành công";
+        } catch (Exception e) {
+            transactionStatus = "Không thành công";
+            throw e; // Re-throw to let the transaction roll back
+        }
+
+        // Pass data to the result page
+        model.addAttribute("amountInVND", amountInVND);
+        model.addAttribute("transactionStatus", transactionStatus);
+        model.addAttribute("bookingId", savedBooking.getBookingid()); // Use the actual bookingid
+        model.addAttribute("orderInfo", "Thanh toan truc tiep don hang: " + savedBooking.getBookingid());
+        model.addAttribute("payDate", new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+
+        return "user/ketquathanhtoantructiep"; // Redirect to the new direct payment result page
+    }
+
 	
 }

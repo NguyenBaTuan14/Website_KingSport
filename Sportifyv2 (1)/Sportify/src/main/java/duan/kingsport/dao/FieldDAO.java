@@ -29,6 +29,22 @@ public interface FieldDAO extends JpaRepository<Field, Integer>{
 			+ "WHERE bd.fieldid IS NULL and st.sporttypeid LIKE :categorySelect And status = 1", nativeQuery = true)
 	List<Field> findSearch(String dateInput, String categorySelect, Integer shiftSelect);
 	
+	@Query(value = """
+	        SELECT f.*
+	        FROM   field f
+	        JOIN   sporttype st          ON st.sporttypeid = f.sporttypeid
+	        LEFT JOIN bookingdetails bd  ON bd.fieldid  = f.fieldid
+	                                    AND bd.playdate = :dateInput      
+	                                    AND bd.shiftid  = :shiftSelect    
+	        WHERE st.sporttypeid = :categorySelect         
+	          AND f.address     LIKE CONCAT('%', :area, '%')
+	          AND f.status      = 1                         
+	          AND bd.fieldid    IS NULL                    
+	        """, nativeQuery = true)
+	List<Field> findSearchAdd( String  dateInput,  String  categorySelect,  Integer shiftSelect, String  area);    
+	
+	
+	
 	@Query(value="select * from field where fieldid = :id", nativeQuery = true)
 	List<Field> findFieldById(Integer id);
 	

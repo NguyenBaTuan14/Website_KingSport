@@ -132,6 +132,74 @@ public class FieldController {
 	        return "user/san";
 	    }
 	 
+	 
+	// Tìm sân trống theo input: date, sportype, giờ chơi
+		 @PostMapping("/field/searchadd")
+		 public String SreachDataAdd(@RequestParam("dateInput") String dateInput,
+	                @RequestParam("categorySelect") String categorySelect,
+	                @RequestParam("shiftSelect") int shiftSelect,
+	                @RequestParam("area") String area, Model model) {
+			 	selectedSportTypeId = categorySelect; // môn thể thao được chọn ráng biến toàn cục
+			 	// Lấy List sân thỏa mãn đầu vào người dùng tìm: date, môn thể thao, giờ chơi theo ID ca
+			    List<Field> listsearch = fieldservice.findSearchAdd(dateInput, categorySelect, shiftSelect, area); // List sân thỏa mãn giá trị truyền vào
+			    List<Shifts> shiftById = shiftservice.findShiftById(shiftSelect); // List này để lấy tên ca đổ lên thông báo
+			    List<Sporttype> sportypeById = sporttypeservice.findSporttypeById(categorySelect); // List này lấy tên môn thể thao đổ lên thông báo
+				List<Shifts> shift = shiftservice.findAll(); // Gọi tất cả danh sách ca
+				List<Sporttype> sporttypeListNotAll = sporttypeservice.findAll(); // Đổ môn thể thao không có Tất cả
+				List<Sporttype> sporttypeList = sporttypeservice.findAll(); // Đổ tất cả môn thể thao 
+				Sporttype tatca = new Sporttype(); // Tạo đối tượng loại môn thể thao
+				tatca.setCategoryname("Tất cả"); // Thêm Tất cả vào list đối tượng
+				tatca.setSporttypeid("tatca"); // Có Id là tatca
+				sporttypeList.add(tatca);
+				// Sắp xếp danh sách loại môn thể thao theo: Tất cả đầu tiên => các môn khác
+				Collections.sort(sporttypeList, new Comparator<Sporttype>() {
+				    @Override
+				    public int compare(Sporttype s1, Sporttype s2) {
+				        // Xác định logic sắp xếp
+				        if (s1.getCategoryname().equals("Tất cả")) {
+				            return -1; // Đẩy "Tất cả" lên đầu
+				        } else if (s2.getCategoryname().equals("Tất cả")) {
+				            return 1; // Đẩy "Tất cả" lên đầu
+				        } else {
+				            return s1.getCategoryname().compareTo(s2.getCategoryname());
+				        }
+				    }
+				});
+				// Hiển thị danh sách đã sắp xếp
+				for (Sporttype sporttype : sporttypeList) {
+				    model.addAttribute("cates",sporttype);
+				}
+				// Format yyyy-mm-dd thành dd-mm-yyyy
+				LocalDate date = LocalDate.parse(dateInput);
+				DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+				String formattedDate = date.format(formatter);
+				//Thông báo kết quả tìm kiếm
+				String nameshift = null; // Biến chứa tên ca
+				for(int i = 0 ; i < shiftById.size();i++ ) { // Lấy tên ca theo id ca nhập vào
+					nameshift = shiftById.get(i).getNameshift();
+				}
+				String namesporttype = null; // Biến chứa tên môn thể thao
+				for(int i = 0 ; i  < sportypeById.size();i++) { //Lấy tên môn thể thao theo id nhập vào
+					namesporttype = sportypeById.get(i).getCategoryname();
+				}
+				String message = "Kết quả tìm kiếm sân trống: ";
+				
+				// Add các đối tượng vào model để qua giao diện hiển thị
+				model.addAttribute("dateInput",dateInput); // Ngày nhập vào tìm kiếm
+				model.addAttribute("area",area); // Ngày nhập vào tìm kiếm
+				model.addAttribute("namesporttype",namesporttype); // Tên môn thể thao
+				model.addAttribute("nameshift",nameshift);	// Tên ca 
+				model.addAttribute("formattedDate",formattedDate); // Ngày đã format thành dd-mm-yyyy
+				model.addAttribute("thongbao",message); // Thông báo kết quả tìm kiếm
+				model.addAttribute("cateNotAll",sporttypeListNotAll); // Môn thể thao không có Tất cả
+				model.addAttribute("shift", shift); // Tất cả danh sách ca
+				model.addAttribute("selectedSportTypeId",selectedSportTypeId); // ID Môn thể thao đã chọn tìm kiếm
+				model.addAttribute("cates",sporttypeList);	// Tất cả các môn thể thao
+				model.addAttribute("fieldList", listsearch); // Danh sách sân thỏa mản khi tìm kiếm
+				// Chuyển hướng đến trang sân
+		        return "user/san";
+		    }
+	 
 	// View giao diện lên theo url http://localhost:8080/sportify/field
 	@GetMapping("/field")
 	public String viewField(Model model , HttpServletRequest request) {

@@ -199,7 +199,7 @@
 		</div>
 	</section>
 
-	<form action="/sportify/getIp/create" method="post">
+	<form id="bookingForm" method="post">
 		<section class="ftco-section">
 			<div class="container">
 				<div class="container">
@@ -405,38 +405,26 @@
 									</div>
 								</div>
 								<div class="col-md-6">
-									<div class="cart-detail p-3 p-md-4"
-										style="background-color: #F1F6F9;">
-										<h3 class="billing-heading mb-4">Hình thức thanh toán</h3>
-										<div class="form-group">
-											<div class="col-md-12">
-												<div class="radio">
-
-													<label> <input type="radio" checked name="optradio"
-														class="mr-2"> <img
-														style="width: 12%; height: 14%;"
-														th:src="@{'/user/images/' + iconVNP.png}" alt="Image"></input>VNPay
-													</label>
-												</div>
-											</div>
-										</div>
-
-										<div style="color: black;" class="font-italic">
-											Khi nhấn vào nút này bạn công nhận mình đã đọc và đồng ý với
-											các <a th:href="@{/sportify/quydinh}" style="color: blue;">
-												Điều khoản & Điều kiện </a> và <a
-												th:href="@{/sportify/chinhsach}" style="color: blue;">Chính
-												sách quyền riêng tư</a> của Kingsport.
-											<p>
-
-
-												<!-- 		<a  th:href="@{/sportify/getIp/create/{amount}(amount=${tiencoc})}" class="btn btn-primary py-3 px-4">Đặt Sân</a>-->
-												<button type="submit" class="btn btn-primary py-3 px-4 mt-3">Đặt
-													Sân</button>
-											</p>
-										</div>
-									</div>
-								</div>
+								                                <div class="cart-detail p-3 p-md-4" style="background-color: #F1F6F9;">
+								                                    <h3 class="billing-heading mb-4">Hình thức thanh toán</h3>
+								                                    <div class="form-group">
+								                                        <div class="col-md-12">
+								                                            <div class="radio">
+								                                                <label> <input type="radio" checked name="optradio" value="vnpay" class="mr-2"> <img style="width: 12%; height: 14%;" th:src="@{'/user/images/' + iconVNP.png}" alt="Image"></input>VNPay </label>
+								                                            </div>
+								                                            <div class="radio">
+								                                                <label> <input type="radio" name="optradio" value="direct" class="mr-2"> Thanh toán trực tiếp </label>
+								                                            </div>
+								                                        </div>
+								                                    </div>
+								                                    <div style="color: black;" class="font-italic">
+								                                        Khi nhấn vào nút này bạn công nhận mình đã đọc và đồng ý với các <a th:href="@{/sportify/quydinh}" style="color: blue;">Điều khoản & Điều kiện </a> và <a th:href="@{/sportify/chinhsach}" style="color: blue;">Chính sách quyền riêng tư</a> của Kingsport.
+								                                        <p>
+								                                            <button type="submit" class="btn btn-primary py-3 px-4 mt-3">Đặt Sân</button>
+								                                        </p>
+								                                    </div>
+								                                </div>
+								                            </div>
 							</div>
 						</div>
 						<!-- .col-md-8 -->
@@ -635,6 +623,16 @@
 							}
 						});
 	</script>
+	<script>
+	        document.getElementById("bookingForm").addEventListener("submit", function(event) {
+	            const paymentMethod = document.querySelector('input[name="optradio"]:checked').value;
+	            if (paymentMethod === "vnpay") {
+	                this.action = "/sportify/getIp/create";
+	            } else if (paymentMethod === "direct") {
+	                this.action = "/sportify/directPayment";
+	            }
+	        });
+	    </script>
 
 
 

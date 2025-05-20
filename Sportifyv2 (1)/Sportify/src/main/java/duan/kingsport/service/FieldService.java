@@ -25,6 +25,8 @@ public interface FieldService {
 	
 	List<Field> findSearch(String dateInput, String categorySelect, Integer shiftSelect);
 	
+	List<Field> findSearchAdd(String dateInput, String categorySelect, Integer shiftSelect, String area);
+	
 	List<Field> findFieldById(Integer id);
 	
 	List<Field> findBySporttypeIdlimit3(String cid);

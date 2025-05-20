@@ -203,4 +203,39 @@ public interface BookingDAO extends JpaRepository<Bookings, Integer> {
 	 		+ "GROUP BY booking_date_month\r\n"
 	 		+ "ORDER BY booking_date_month;", nativeQuery = true)
 	 List<Object[]> rpSoLuongBookingTrongNam(@Param("year") String year);
+	 
+	 
+	 
+	// Thêm mới: Thống kê doanh thu theo khoảng ngày
+		@Query(value = "SELECT\r\n"
+				+ "  DATE(bookingdate) AS booking_date,\r\n"
+				+ "  SUM(\r\n"
+				+ "    CASE\r\n"
+				+ "      WHEN bookingstatus = 'Hoàn Thành' THEN bookingprice\r\n"
+				+ "      WHEN bookingstatus = 'Đã Cọc' THEN bookingprice * 0.3\r\n"
+				+ "      WHEN bookingstatus = 'Hủy Đặt' THEN -bookingprice * 0.3 * 2\r\n"
+				+ "      ELSE 0\r\n"
+				+ "    END\r\n"
+				+ "  ) AS total_revenue,\r\n"
+				+ "  SUM(CASE WHEN bookingstatus = 'Hủy Đặt' THEN bookingprice * 0.3 * 2 ELSE 0 END) AS canceled_penalty,\r\n"
+				+ "  SUM(CASE WHEN bookingstatus = 'Đã Cọc' THEN bookingprice * 0.3 ELSE 0 END) AS deposit_revenue,\r\n"
+				+ "  SUM(CASE WHEN bookingstatus = 'Hoàn Thành' THEN bookingprice ELSE 0 END) AS completed_revenue\r\n"
+				+ "FROM bookings\r\n"
+				+ "WHERE bookingdate BETWEEN :startDate AND :endDate\r\n"
+				+ "GROUP BY booking_date\r\n"
+				+ "ORDER BY booking_date;", nativeQuery = true)
+		List<Object[]> rpThongKeDTTheoNgay(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
+
+		// Thêm mới: Thống kê số phiếu đặt theo khoảng ngày
+		@Query(value = "SELECT\r\n"
+				+ "  DATE(bookingdate) AS booking_date,\r\n"
+				+ "  COUNT(bookingid) AS total_bookings,\r\n"
+				+ "  SUM(CASE WHEN bookingstatus LIKE 'Hủy Đặt' THEN 1 ELSE 0 END) AS canceled_count,\r\n"
+				+ "  SUM(CASE WHEN bookingstatus LIKE 'Đã Cọc' THEN 1 ELSE 0 END) AS deposit_count,\r\n"
+				+ "  SUM(CASE WHEN bookingstatus LIKE 'Hoàn Thành' THEN 1 ELSE 0 END) AS completed_count\r\n"
+				+ "FROM bookings\r\n"
+				+ "WHERE bookingdate BETWEEN :startDate AND :endDate\r\n"
+				+ "GROUP BY booking_date\r\n"
+				+ "ORDER BY booking_date;", nativeQuery = true)
+		List<Object[]> rpThongKeSLTheoNgay(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
 }

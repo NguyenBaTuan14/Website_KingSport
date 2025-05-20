@@ -662,4 +662,301 @@ public class ReportBookingRestController {
 			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 		}
 	}
+	
+	
+	
+	
+	// Thêm mới: API để lấy doanh thu theo khoảng ngày
+    @GetMapping("getRevenueByDateRange")
+    public List<Object[]> getRevenueByDateRange(@RequestParam("startDate") String startDate,
+            @RequestParam("endDate") String endDate) {
+        java.sql.Date sqlStartDate = java.sql.Date.valueOf(startDate);
+        java.sql.Date sqlEndDate = java.sql.Date.valueOf(endDate);
+        return bookingDAO.rpThongKeDTTheoNgay(sqlStartDate, sqlEndDate);
+    }
+
+    // Thêm mới: API để lấy số lượng phiếu đặt theo khoảng ngày
+    @GetMapping("getBookingsByDateRange")
+    public List<Object[]> getBookingsByDateRange(@RequestParam("startDate") String startDate,
+            @RequestParam("endDate") String endDate) {
+        java.sql.Date sqlStartDate = java.sql.Date.valueOf(startDate);
+        java.sql.Date sqlEndDate = java.sql.Date.valueOf(endDate);
+        return bookingDAO.rpThongKeSLTheoNgay(sqlStartDate, sqlEndDate);
+    }
+
+    // Thêm mới: Xuất Excel doanh thu theo khoảng ngày
+    @GetMapping("/downloadExcelRevenueByDateRange")
+    public void downloadExcelRevenueByDateRange(HttpServletResponse response,
+            @RequestParam("startDate") String startDate, @RequestParam("endDate") String endDate) {
+        try {
+            XSSFWorkbook workbook = new XSSFWorkbook();
+            XSSFSheet sheet = workbook.createSheet("Report doanh thu đặt sân từ " + startDate + " đến " + endDate);
+            LocalDate currentDate = LocalDate.now();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            String formattedDate = currentDate.format(formatter);
+
+            java.sql.Date sqlStartDate = java.sql.Date.valueOf(startDate);
+            java.sql.Date sqlEndDate = java.sql.Date.valueOf(endDate);
+            List<Object[]> dataList = bookingDAO.rpThongKeDTTheoNgay(sqlStartDate, sqlEndDate);
+            int dataRowIndex = 5; // Start from row 5 after the headers
+
+            Map<Integer, Object[]> data = new TreeMap<>();
+            data.put(1, new Object[] { "Danh Sách Thông Tin Doanh Thu Phiếu Đặt Sân Từ " + startDate + " Đến " + endDate });
+            data.put(2, new Object[] { "Ngày tạo:", formattedDate });
+            data.put(3, new Object[] {});
+            data.put(4, new Object[] { "STT", "Ngày", "Chi trả hủy đơn", "Doanh thu đặt sân đã cọc",
+                    "Doanh thu phiếu đặt sân đã hoàn thành", "Doanh thu thực tế" });
+
+            for (int i = 0; i < dataList.size(); i++) {
+                Object[] rpData = dataList.get(i);
+
+                String ngay = String.valueOf(rpData[0]);
+                String huy = String.valueOf(rpData[2]);
+                String coc = String.valueOf(rpData[3]);
+                String done = String.valueOf(rpData[4]);
+                String thucte = String.valueOf(rpData[1]);
+
+                data.put(dataRowIndex, new Object[] { dataRowIndex - 4, ngay, huy, coc, done, thucte });
+                dataRowIndex++;
+            }
+
+            int lastDataRowIndex = dataRowIndex - 1;
+            int startRow = lastDataRowIndex + 2;
+
+            // Thêm dữ liệu vào trang tính (sheet)
+            for (Map.Entry<Integer, Object[]> entry : data.entrySet()) {
+                Integer rowNum = entry.getKey();
+                Object[] rowData = entry.getValue();
+
+                Row row = sheet.createRow(rowNum);
+
+                for (int i = 0; i < rowData.length; i++) {
+                    Cell cell = row.createCell(i);
+                    Object value = rowData[i];
+
+                    if (value == null) {
+                        cell.setCellValue("");
+                    } else if (value instanceof String) {
+                        cell.setCellValue((String) value);
+                    } else if (value instanceof Integer) {
+                        cell.setCellValue((Integer) value);
+                    } else if (value instanceof java.sql.Date) {
+                        cell.setCellValue((java.sql.Date) value);
+                        CellStyle dateStyle = workbook.createCellStyle();
+                        dateStyle
+                                .setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("dd/MM/yyyy"));
+                        cell.setCellStyle(dateStyle);
+                    }
+                }
+            }
+
+            // Điều chỉnh chiều rộng cột
+            sheet.setColumnWidth(0, 4000);
+            sheet.setColumnWidth(1, 9000);
+            sheet.setColumnWidth(2, 9000);
+            sheet.setColumnWidth(3, 9000);
+            sheet.setColumnWidth(4, 9000);
+            sheet.setColumnWidth(5, 9000);
+
+            for (int i = 0; i <= lastDataRowIndex + 1; i++) {
+                Row row = sheet.getRow(i);
+                if (row != null) {
+                    for (int j = 0; j <= 5; j++) {
+                        Cell cell = row.getCell(j);
+                        if (cell != null) {
+                            XSSFCellStyle cellStyle = (XSSFCellStyle) cell.getCellStyle();
+                            cellStyle.setAlignment(HorizontalAlignment.CENTER);
+                            cell.setCellStyle(cellStyle);
+                        }
+                    }
+                }
+            }
+
+            // Định dạng số tiền tệ Việt Nam (VND)
+            CellStyle currencyStyle = workbook.createCellStyle();
+            currencyStyle.setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("#,##0 VNĐ"));
+
+            for (int i = 5; i <= lastDataRowIndex; i++) {
+                Row row = sheet.getRow(i);
+                if (row != null) {
+                    Cell cell = row.getCell(2); // Cột huy
+                    if (cell != null) {
+                        cell.setCellValue(Double.parseDouble(cell.getStringCellValue()));
+                        cell.setCellStyle(currencyStyle);
+                    }
+
+                    cell = row.getCell(3); // Cột coc
+                    if (cell != null) {
+                        cell.setCellValue(Double.parseDouble(cell.getStringCellValue()));
+                        cell.setCellStyle(currencyStyle);
+                    }
+
+                    cell = row.getCell(4); // Cột done
+                    if (cell != null) {
+                        cell.setCellValue(Double.parseDouble(cell.getStringCellValue()));
+                        cell.setCellStyle(currencyStyle);
+                    }
+
+                    cell = row.getCell(5); // Cột thucte
+                    if (cell != null) {
+                        cell.setCellValue(Double.parseDouble(cell.getStringCellValue()));
+                        cell.setCellStyle(currencyStyle);
+                    }
+                }
+            }
+
+            // Ghi workbook vào luồng HttpServletResponse output
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition",
+                    "attachment; filename=ReportDoanhThu_" + startDate + "_to_" + endDate + ".xlsx");
+
+            try (ServletOutputStream out = response.getOutputStream()) {
+                workbook.write(out);
+                out.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Thêm mới: Xuất Excel số lượng phiếu đặt theo khoảng ngày
+    @GetMapping("/downloadExcelBookingsByDateRange")
+    public void downloadExcelBookingsByDateRange(HttpServletResponse response,
+            @RequestParam("startDate") String startDate, @RequestParam("endDate") String endDate) {
+        try {
+            XSSFWorkbook workbook = new XSSFWorkbook();
+            XSSFSheet sheet = workbook.createSheet("Report số lượng đặt sân từ " + startDate + " đến " + endDate);
+            LocalDate currentDate = LocalDate.now();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            String formattedDate = currentDate.format(formatter);
+
+            java.sql.Date sqlStartDate = java.sql.Date.valueOf(startDate);
+            java.sql.Date sqlEndDate = java.sql.Date.valueOf(endDate);
+            List<Object[]> dataList = bookingDAO.rpThongKeSLTheoNgay(sqlStartDate, sqlEndDate);
+            int dataRowIndex = 5; // Start from row 5 after the headers
+
+            Map<Integer, Object[]> data = new TreeMap<>();
+            data.put(1, new Object[] { "Danh Sách Thông Tin Số Lượng Phiếu Đặt Sân Từ " + startDate + " Đến " + endDate });
+            data.put(2, new Object[] { "Ngày tạo:", formattedDate });
+            data.put(3, new Object[] {});
+            data.put(4, new Object[] { "STT", "Ngày", "Số lượng phiếu hủy đặt sân", "Số lượng phiếu cọc đặt sân",
+                    "Số lượng phiếu hoàn thành đặt sân", "Tổng số lượng phiếu" });
+
+            for (int i = 0; i < dataList.size(); i++) {
+                Object[] rpData = dataList.get(i);
+
+                String ngay = String.valueOf(rpData[0]);
+                String huy = String.valueOf(rpData[2]);
+                String coc = String.valueOf(rpData[3]);
+                String done = String.valueOf(rpData[4]);
+                String tong = String.valueOf(rpData[1]);
+
+                data.put(dataRowIndex, new Object[] { dataRowIndex - 4, ngay, huy, coc, done, tong });
+                dataRowIndex++;
+            }
+
+            int lastDataRowIndex = dataRowIndex - 1;
+            int startRow = lastDataRowIndex + 2;
+
+            // Thêm dữ liệu vào trang tính (sheet)
+            for (Map.Entry<Integer, Object[]> entry : data.entrySet()) {
+                Integer rowNum = entry.getKey();
+                Object[] rowData = entry.getValue();
+
+                Row row = sheet.createRow(rowNum);
+
+                for (int i = 0; i < rowData.length; i++) {
+                    Cell cell = row.createCell(i);
+                    Object value = rowData[i];
+
+                    if (value == null) {
+                        cell.setCellValue("");
+                    } else if (value instanceof String) {
+                        cell.setCellValue((String) value);
+                    } else if (value instanceof Integer) {
+                        cell.setCellValue((Integer) value);
+                    } else if (value instanceof java.sql.Date) {
+                        cell.setCellValue((java.sql.Date) value);
+                        CellStyle dateStyle = workbook.createCellStyle();
+                        dateStyle
+                                .setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("dd/MM/yyyy"));
+                        cell.setCellStyle(dateStyle);
+                    }
+                }
+            }
+
+            // Điều chỉnh chiều rộng cột
+            sheet.setColumnWidth(0, 4000);
+            sheet.setColumnWidth(1, 9000);
+            sheet.setColumnWidth(2, 9000);
+            sheet.setColumnWidth(3, 9000);
+            sheet.setColumnWidth(4, 9000);
+            sheet.setColumnWidth(5, 9000);
+
+            for (int i = 0; i <= lastDataRowIndex + 1; i++) {
+                Row row = sheet.getRow(i);
+                if (row != null) {
+                    for (int j = 0; j <= 5; j++) {
+                        Cell cell = row.getCell(j);
+                        if (cell != null) {
+                            XSSFCellStyle cellStyle = (XSSFCellStyle) cell.getCellStyle();
+                            cellStyle.setAlignment(HorizontalAlignment.CENTER);
+                            cell.setCellStyle(cellStyle);
+                        }
+                    }
+                }
+            }
+
+            // Tạo một đối tượng kiểu dữ liệu số
+            CellStyle numberCellStyle = workbook.createCellStyle();
+            numberCellStyle.setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("#,##0"));
+
+            for (int i = 5; i <= lastDataRowIndex; i++) {
+                Row row = sheet.getRow(i);
+                if (row != null) {
+                    Cell cellHuy = row.getCell(2); // Cột huy
+                    if (cellHuy != null) {
+                        cellHuy.setCellValue(Double.parseDouble(cellHuy.getStringCellValue()));
+                        cellHuy.setCellStyle(numberCellStyle);
+                    }
+
+                    Cell cellCoc = row.getCell(3); // Cột coc
+                    if (cellCoc != null) {
+                        cellCoc.setCellValue(Double.parseDouble(cellCoc.getStringCellValue()));
+                        cellCoc.setCellStyle(numberCellStyle);
+                    }
+
+                    Cell cellDone = row.getCell(4); // Cột done
+                    if (cellDone != null) {
+                        cellDone.setCellValue(Double.parseDouble(cellDone.getStringCellValue()));
+                        cellDone.setCellStyle(numberCellStyle);
+                    }
+
+                    Cell cellTong = row.getCell(5); // Cột tong
+                    if (cellTong != null) {
+                        cellTong.setCellValue(Double.parseDouble(cellTong.getStringCellValue()));
+                        cellTong.setCellStyle(numberCellStyle);
+                    }
+                }
+            }
+
+            // Ghi workbook vào luồng HttpServletResponse output
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition",
+                    "attachment; filename=ReportSoLuong_" + startDate + "_to_" + endDate + ".xlsx");
+
+            try (ServletOutputStream out = response.getOutputStream()) {
+                workbook.write(out);
+                out.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

@@ -193,22 +193,28 @@ body {
 				</div>
 
 
-				<form th:action="@{/sportify/field/search}" method="post"
+				<form th:action="@{/sportify/field/searchadd}" method="post"
 					class=" mb-4 pb-4 d-flex justify-content-center col-11 ">
 
 					<input
 						style="border-top: 3px solid #28a745; border-left: 3px solid #28a745; border-bottom: 3px solid #28a745; font-weight: lighter;"
 						id="dateInput" name="dateInput" th:value="${dateInput}" required
 						class="form-control rounded-0 col-2" type="date"
-						placeholder="Search" aria-label="Search"> <select
-						style="border-top: 3px solid #28a745; border-left: 3px solid #28a745; border-bottom: 3px solid #28a745; font-weight: lighter;"
+						placeholder="Search" aria-label="Search">
+						<input style="border-top: 3px solid #28a745; border-left: 3px solid #28a745; border-bottom: 3px solid #28a745; font-weight: lighter;"
+								id="area" name="area" th:value="${area}" required
+								class="form-control rounded-0 col-2" type="text"
+								placeholder="Khu vực" aria-label="Search"> 
+						
+					<select style="border-top: 3px solid #28a745; border-left: 3px solid #28a745; border-bottom: 3px solid #28a745; font-weight: lighter;"
 						name="categorySelect"
 						class="  form-control rounded-0 custom-select  col-2"
 						id="inputGroupSelect01">
 						<option th:each="c : ${cateNotAll}" value="0"
 							th:value="${c.sporttypeid}">[[${c.categoryname}]]</option>
 
-					</select> <select
+					</select> 
+					<select
 						style="border-top: 3px solid #28a745; border-left: 3px solid #28a745; border-bottom: 3px solid #28a745; font-weight: lighter;"
 						name="shiftSelect"
 						class=" form-control rounded-0 custom-select  col-3"
@@ -245,6 +251,8 @@ body {
 							class="font-weight-bold" th:text="${thongbao}"></p>
 						<p style="font-size: 18px; margin: 2px;"
 							class="font-weight-bold text-success" th:text="${namesporttype}"></p>
+						<p style="font-size: 18px; margin: 2px;"
+							class="font-weight-bold text-success" th:text="${area}"></p>
 						<p style="font-size: 18px; margin: 2px;"
 							class="font-weight-bold text-info" th:text="${nameshift}"></p>
 						<p style="font-size: 18px; margin: 2px;"
