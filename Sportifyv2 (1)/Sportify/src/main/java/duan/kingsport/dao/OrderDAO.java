@@ -168,4 +168,28 @@ public interface OrderDAO extends JpaRepository<Orders, Integer> {
 			+ "WHERE\r\n" + "  YEAR(createdate) = :year\r\n" + "GROUP BY thang\r\n"
 			+ "ORDER BY thang;", nativeQuery = true)
 	List<Object[]> rpSoLuongOrderTrongNam(@Param("year") String year);
+	
+	// New method: Thống kê doanh thu theo ngày
+    @Query(value = "SELECT\r\n"
+            + "    DATE(createdate) AS order_date,\r\n"
+            + "    SUM(CASE WHEN paymentstatus = 1 THEN totalprice ELSE 0 END) AS doanhthu_thucte,\r\n"
+            + "    SUM(CASE WHEN paymentstatus = 0 THEN totalprice ELSE 0 END) AS doanhthu_chuathanhtoan,\r\n"
+            + "    SUM(totalprice) AS doanhthu_uoctinh\r\n"
+            + "FROM orders\r\n"
+            + "WHERE DATE(createdate) BETWEEN :startDate AND :endDate\r\n"
+            + "GROUP BY DATE(createdate)\r\n"
+            + "ORDER BY order_date;", nativeQuery = true)
+    List<Object[]> thongKeDoanhThuTheoNgay(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
+
+    // New method: Thống kê số đơn đặt hàng theo ngày
+    @Query(value = "SELECT\r\n"
+            + "    DATE(createdate) AS order_date,\r\n"
+            + "    COUNT(orderid) AS tong_phieu,\r\n"
+            + "    SUM(CASE WHEN paymentstatus = 0 THEN 1 ELSE 0 END) AS chua_thanh_toan,\r\n"
+            + "    SUM(CASE WHEN paymentstatus = 1 THEN 1 ELSE 0 END) AS da_thanh_toan\r\n"
+            + "FROM orders\r\n"
+            + "WHERE DATE(createdate) BETWEEN :startDate AND :endDate\r\n"
+            + "GROUP BY DATE(createdate)\r\n"
+            + "ORDER BY order_date;", nativeQuery = true)
+    List<Object[]> thongKeSoDonDatHangTheoNgay(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
 }

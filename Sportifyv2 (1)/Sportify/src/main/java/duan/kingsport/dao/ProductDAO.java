@@ -40,4 +40,8 @@ public interface ProductDAO extends JpaRepository<Products, Integer> {
 			+ "ORDER BY total_sold DESC\r\n"
 			+ "LIMIT 4", nativeQuery = true)
 	List<Object[]> Top4OrderProduct();
+	
+	// New method to find all products with productstatus = 1 using JPQL
+    @Query("SELECT p FROM Products p WHERE p.productstatus = 1")
+    List<Products> findAllActiveProducts();
 }

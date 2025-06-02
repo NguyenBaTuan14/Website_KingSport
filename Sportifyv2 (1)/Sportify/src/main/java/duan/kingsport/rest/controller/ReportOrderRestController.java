@@ -2,6 +2,7 @@ package duan.kingsport.rest.controller;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -64,6 +65,29 @@ public class ReportOrderRestController {
 	public List<Object[]> getYearOrder() {
 		return orderDAO.getYearOrder();
 	}
+	
+	
+	// New endpoint: Thống kê doanh thu theo ngày
+    @GetMapping("thongKeDoanhThuTheoNgay")
+    public List<Object[]> thongKeDoanhThuTheoNgay(
+            @RequestParam("startDate") String startDate,
+            @RequestParam("endDate") String endDate) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        LocalDate start = LocalDate.parse(startDate, formatter);
+        LocalDate end = LocalDate.parse(endDate, formatter);
+        return orderDAO.thongKeDoanhThuTheoNgay(Date.valueOf(start), Date.valueOf(end));
+    }
+
+    // New endpoint: Thống kê số đơn đặt hàng theo ngày
+    @GetMapping("thongKeSoDonDatHangTheoNgay")
+    public List<Object[]> thongKeSoDonDatHangTheoNgay(
+            @RequestParam("startDate") String startDate,
+            @RequestParam("endDate") String endDate) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        LocalDate start = LocalDate.parse(startDate, formatter);
+        LocalDate end = LocalDate.parse(endDate, formatter);
+        return orderDAO.thongKeSoDonDatHangTheoNgay(Date.valueOf(start), Date.valueOf(end));
+    }
 
 	// xuất excel
 	// excel Doanh thu đạt hang trong năm
@@ -628,4 +652,143 @@ public class ReportOrderRestController {
 			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 		}
 	}
+	
+	 // New Excel endpoint: Số lượng đặt hàng theo ngày
+    @GetMapping("/downloadExcelSLOrderTheoNgay")
+    public void downloadExcelSLOrderTheoNgay(HttpServletResponse response,
+            @RequestParam("startDate") String startDate,
+            @RequestParam("endDate") String endDate) {
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+            LocalDate start = LocalDate.parse(startDate, formatter);
+            LocalDate end = LocalDate.parse(endDate, formatter);
+            Date sqlStartDate = Date.valueOf(start);
+            Date sqlEndDate = Date.valueOf(end);
+
+            XSSFWorkbook workbook = new XSSFWorkbook();
+            XSSFSheet sheet = workbook.createSheet("Report số lượng đặt hàng từ " + startDate + " đến " + endDate);
+            LocalDate currentDate = LocalDate.now();
+            String formattedDate = currentDate.format(formatter);
+
+            List<Object[]> dataList = orderDAO.thongKeSoDonDatHangTheoNgay(sqlStartDate, sqlEndDate);
+            int dataRowIndex = 5; // Start from row 5 after the headers
+
+            Map<Integer, Object[]> data = new TreeMap<>();
+            data.put(1, new Object[] { "Danh Sách Thông Tin Số Lượng Phiếu Đặt Hàng Từ " + startDate + " Đến " + endDate });
+            data.put(2, new Object[] { "Ngày tạo:", formattedDate });
+            data.put(3, new Object[] {});
+            data.put(4, new Object[] { "STT", "Ngày", "Số lượng phiếu chưa thanh toán", "Số lượng phiếu đã thanh toán",
+                    "Tổng số lượng phiếu" });
+
+            for (int i = 0; i < dataList.size(); i++) {
+                Object[] rpData = dataList.get(i);
+
+                Date orderDate = (Date) rpData[0];
+                String formattedOrderDate = orderDate.toLocalDate().format(formatter);
+                long chuaThanhToan = ((Number) rpData[2]).longValue();
+                long daThanhToan = ((Number) rpData[3]).longValue();
+                long tong = ((Number) rpData[1]).longValue();
+
+                data.put(dataRowIndex, new Object[] { dataRowIndex - 4, formattedOrderDate, chuaThanhToan, daThanhToan, tong });
+                dataRowIndex++;
+            }
+
+            int lastDataRowIndex = dataRowIndex - 1;
+
+            // Thêm dữ liệu vào trang tính (sheet)
+            for (Map.Entry<Integer, Object[]> entry : data.entrySet()) {
+                Integer rowNum = entry.getKey();
+                Object[] rowData = entry.getValue();
+
+                Row row = sheet.createRow(rowNum);
+
+                for (int i = 0; i < rowData.length; i++) {
+                    Cell cell = row.createCell(i);
+                    Object value = rowData[i];
+
+                    if (value == null) {
+                        cell.setCellValue("");
+                    } else if (value instanceof String) {
+                        cell.setCellValue((String) value);
+                    } else if (value instanceof Integer) {
+                        cell.setCellValue((Integer) value);
+                    } else if (value instanceof Long) {
+                        cell.setCellValue((Long) value);
+                    } else if (value instanceof LocalDate) {
+                        cell.setCellValue(java.sql.Date.valueOf((LocalDate) value));
+                        CellStyle dateStyle = workbook.createCellStyle();
+                        dateStyle.setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("dd/MM/yyyy"));
+                        cell.setCellStyle(dateStyle);
+                    }
+                }
+            }
+
+            // Điều chỉnh chiều rộng cột
+            sheet.setColumnWidth(0, 4000);
+            sheet.setColumnWidth(1, 9000);
+            sheet.setColumnWidth(2, 9000);
+            sheet.setColumnWidth(3, 9000);
+            sheet.setColumnWidth(4, 9000);
+
+            for (int i = 0; i <= lastDataRowIndex + 1; i++) {
+                Row row = sheet.getRow(i);
+                if (row != null) {
+                    for (int j = 0; j <= 5; j++) {
+                        Cell cell = row.getCell(j);
+                        if (cell != null) {
+                            XSSFCellStyle cellStyle = (XSSFCellStyle) cell.getCellStyle();
+                            cellStyle.setAlignment(HorizontalAlignment.CENTER);
+                            cell.setCellStyle(cellStyle);
+                        }
+                    }
+                }
+            }
+
+            // Tạo một đối tượng kiểu dữ liệu số
+            CellStyle numberCellStyle = workbook.createCellStyle();
+            numberCellStyle.setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("#,##0"));
+
+            for (int i = 5; i <= lastDataRowIndex; i++) {
+                Row row = sheet.getRow(i);
+                if (row != null) {
+                    Cell cellChuaThanhToan = row.getCell(2);
+                    if (cellChuaThanhToan != null) {
+                        cellChuaThanhToan.setCellStyle(numberCellStyle);
+                    }
+
+                    Cell cellDaThanhToan = row.getCell(3);
+                    if (cellDaThanhToan != null) {
+                        cellDaThanhToan.setCellStyle(numberCellStyle);
+                    }
+
+                    Cell cellTong = row.getCell(4);
+                    if (cellTong != null) {
+                        cellTong.setCellStyle(numberCellStyle);
+                    }
+                }
+            }
+
+            // Áp dụng kiểu cho hàng đầu và dòng dữ liệu
+            XSSFCellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerStyle.setFont(headerFont);
+
+            XSSFCellStyle dataStyle = workbook.createCellStyle();
+            dataStyle.setWrapText(true);
+
+            // Ghi workbook vào luồng HttpServletResponse output
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=ReportSoLuongOrder_" + startDate + "_to_" + endDate + ".xlsx");
+
+            try (ServletOutputStream out = response.getOutputStream()) {
+                workbook.write(out);
+                out.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

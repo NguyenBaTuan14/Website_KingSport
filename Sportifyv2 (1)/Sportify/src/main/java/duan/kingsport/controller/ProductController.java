@@ -40,7 +40,7 @@ public class ProductController {
 			List<Products> productList = productService.findByCategoryId(categoryid.get());
 			model.addAttribute("productList", productList);
 		} else {
-			List<Products> productList = productDAO.findAll();
+			List<Products> productList = productDAO.findAllActiveProducts();
 			model.addAttribute("productList", productList);
 		}
 		//category list
