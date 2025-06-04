@@ -221,7 +221,7 @@ public interface BookingDAO extends JpaRepository<Bookings, Integer> {
 				+ "  SUM(CASE WHEN bookingstatus = 'Đã Cọc' THEN bookingprice * 0.3 ELSE 0 END) AS deposit_revenue,\r\n"
 				+ "  SUM(CASE WHEN bookingstatus = 'Hoàn Thành' THEN bookingprice ELSE 0 END) AS completed_revenue\r\n"
 				+ "FROM bookings\r\n"
-				+ "WHERE bookingdate BETWEEN :startDate AND :endDate\r\n"
+				+ "WHERE DATE(bookingdate) BETWEEN :startDate AND :endDate\r\n"
 				+ "GROUP BY booking_date\r\n"
 				+ "ORDER BY booking_date;", nativeQuery = true)
 		List<Object[]> rpThongKeDTTheoNgay(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
@@ -234,7 +234,7 @@ public interface BookingDAO extends JpaRepository<Bookings, Integer> {
 				+ "  SUM(CASE WHEN bookingstatus LIKE 'Đã Cọc' THEN 1 ELSE 0 END) AS deposit_count,\r\n"
 				+ "  SUM(CASE WHEN bookingstatus LIKE 'Hoàn Thành' THEN 1 ELSE 0 END) AS completed_count\r\n"
 				+ "FROM bookings\r\n"
-				+ "WHERE bookingdate BETWEEN :startDate AND :endDate\r\n"
+				+ "WHERE DATE(bookingdate) BETWEEN :startDate AND :endDate\r\n"
 				+ "GROUP BY booking_date\r\n"
 				+ "ORDER BY booking_date;", nativeQuery = true)
 		List<Object[]> rpThongKeSLTheoNgay(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
